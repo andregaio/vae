@@ -33,15 +33,14 @@ python vae/train.py
 python vae/infer.py --weights weights/last.pt --out test/image.png
 ```
 
-### [Results]()
+### [Results](https://wandb.ai/andregaio/vae)
 <div align="center">
 
 
-<img src="assets/chart1.png">
-<img src="assets/chart2.png">
+<img src="assets/chart.png">
 
 
 </div>
 
 ### Notes
- - Code has been borrowed from https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/tree/master
+ - Some has been borrowed from https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/tree/master

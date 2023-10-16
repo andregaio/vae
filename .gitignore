@@ -1,3 +1,5 @@
 draft/
 test/
 data/
+wandb/
+__pycache__/

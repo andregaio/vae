@@ -4,50 +4,80 @@ from torch.optim import Adam
 from data import load_dataset
 from loss import criterion
 from model import VAE
-from utils import DEVICE
+import wandb
+import argparse
 
 
-batch_size = 100
-lr = 1e-3
-epochs = 30
-x_dim = 784
-hidden_dim = 400
-latent_dim = 200
+def train(args):
 
-train_loader, val_loader = load_dataset(batch_size)
+    if args.wandb:
+        run = wandb.init(
+            project='vae',            
+            config={
+                'model': 'vae',
+                'dataset': 'MNIST',
+                'epochs': args.epochs,
+                'batch' : args.batch,
+                'learning_rate': args.learning_rate,
+                'x_dim' : args.x_dim,
+                'hidden_dim' : args.hidden_dim,
+                'latent_dim' : args.latent_dim
+            })
 
-model = VAE(x_dim, hidden_dim, latent_dim).to(DEVICE)
 
-optimizer = Adam(model.parameters(), lr=lr)
 
-print("Start training VAE...")
-model.train()
+    DEVICE = torch.device('cuda')
 
-for epoch in range(epochs):
-    overall_loss = 0
-    for batch_idx, (x, _) in enumerate(train_loader):
-        x = x.view(batch_size, x_dim)
-        x = x.to(DEVICE)
+    train_loader, _ = load_dataset(args.batch)
 
-        optimizer.zero_grad()
+    model = VAE(args.x_dim, args.hidden_dim, args.latent_dim).to(DEVICE)
 
-        x_hat, mean, log_var = model(x)
-        loss = criterion(x, x_hat, mean, log_var)
-        
-        overall_loss += loss.item()
-        
-        loss.backward()
-        optimizer.step()
-        
-        torch.save(model.state_dict(), 'weights/last.pt')
+    optimizer = Adam(model.parameters(), lr=args.learning_rate)
 
-        with torch.no_grad():
-            noise = torch.randn(1, latent_dim).to(DEVICE)
-            out = model.decoder(noise)
-        save_image(out.view(1, 1, 28, 28), 'test/output_image.jpg')
+    model.train()
 
-        
-    print("\tEpoch", epoch + 1, "complete!", "\tAverage Loss: ", overall_loss / (batch_idx*batch_size))
+    for epoch in range(args.epochs):
+        overall_loss = 0
+        for i, (x, _) in enumerate(train_loader, 0):
+            x = x.view(args.batch, args.x_dim)
+            x = x.to(DEVICE)
+
+            optimizer.zero_grad()
+
+            x_hat, mean, std = model(x)
+            loss, rep, kld = criterion(x, x_hat, mean, std)
+            
+            overall_loss += loss.item()
+            
+            loss.backward()
+            optimizer.step()
+            
+            torch.save(model.state_dict(), 'weights/last.pt')
+
+            with torch.no_grad():
+                model.generate_image()
+                            
+        print(f'\tEpoch: {epoch + 1} / {args.epochs} \t Loss: {loss:.2f}, \t Rep. loss: {rep:.2f}, \t KLD loss: {kld:.2f}')
     
-print("Finish!!")
+        if args.wandb:
+            wandb.log({'loss': loss,
+                        'rep': rep,
+                        'kld': kld,
+                        'epoch': epoch + 1,
+                    })
 
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser("Argument parser")
+    parser.add_argument("--batch", type = int, default = 100)
+    parser.add_argument("--epochs", type = int, default = 30)
+    parser.add_argument("--learning_rate", type = float, default = 1e-3)
+    parser.add_argument("--x_dim", type = int, default = 784)
+    parser.add_argument("--hidden_dim", type = int, default = 400)
+    parser.add_argument("--latent_dim", type = int, default = 200)
+    parser.add_argument("--wandb", action="store_true", default = False)
+    args = parser.parse_args()
+
+    train(args)
