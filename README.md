@@ -1,6 +1,6 @@
 vae
 
-A PyTorch implementation of [Auto-Encoding Variational Bayes] (https://arxiv.org/pdf/1312.6114.pdf)
+A PyTorch implementation of [Auto-Encoding Variational Bayes](https://arxiv.org/pdf/1312.6114.pdf)
 
 
 <img src="assets/logo.png">
